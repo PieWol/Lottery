@@ -2,8 +2,10 @@
 
 #[ink::contract]
 mod lottery {
+
+
     // Import the `Mapping` type
-use ink::storage::Mapping;
+use ink::{storage::Mapping};
 
 
     /// Defines the storage of your contract.
@@ -22,9 +24,10 @@ use ink::storage::Mapping;
         tickets: Mapping<AccountId, u32>,
         // Amount of funds to be won. Winner takes all.
         jackpot: u32,
-        // Block of the first ticket purchase
-        starting_block: Option<u32>
-        
+        // Block that marks end of tickets being purchaseable.
+        ending_block: u32,
+        // Block that the drawing of the winner will occur in. ~1hr after end of lottery.
+        drawing_block: u32       
         
     }
 
@@ -33,19 +36,34 @@ use ink::storage::Mapping;
     
 
     impl Lottery {
-        /// Constructor that initializes the `bool` value to the given `init_value`.
+        /// Constructor that initializes the lottery.
         #[ink(constructor)]
-        pub fn new(init_value: bool ) -> Self {
+        pub fn new_lottery() -> Self {
+            let mut lottery = Self::new();
+            Lottery::start_lottery(&mut lottery);
+            lottery
+        }
+
+
+        fn new() -> Self {
             let tickets = Mapping::default();
             Self { 
                 open: true, 
                 winner: None,
                 tickets,
                 jackpot: 0,
-                starting_block: None
-                
+                ending_block: 0,
+                drawing_block: 0
                  }
         }
+
+        // set the ending and drawing block of the lottery based on the current block number
+        fn start_lottery(&mut self) {
+           let block = self.env().block_number();
+
+           self.ending_block = block + 100800;
+           self.drawing_block = block + 100900;
+            }
 
 
 
@@ -61,22 +79,32 @@ use ink::storage::Mapping;
         pub fn get_tickets_by_account(&self, account: AccountId) -> Option<u32> {
             self.tickets.get(account)
         }
+        
+        
 
         /// Buy Lottery tickets
         #[ink(message, payable)]
-        pub fn transfer(&mut self) {
-            // set the starting block of the lottery
-            let starting_block = self.env().block_number();
+        pub fn purchase_tickets(&mut self, desired_amount: u32) {
+            // check for lottery being open
+            assert!(self.env().block_number() < self.ending_block);
+            
+                      
             let caller = self.env().caller();
             let tickets = self.tickets.get(caller).unwrap_or(0);
             let endowment = self.env().transferred_value() as u32;
-            self.tickets.insert(caller, &(tickets + endowment));
+            assert!(endowment > desired_amount);
+            self.tickets.insert(caller, &(tickets + desired_amount));          
         }
 
+        /// Fetch price of one ticket
+        #[ink(message)]
+        pub fn get_ticket_price(&self) -> String {
+            "A ticket costs exactly 1 Token.".to_owned()           
+        }
 
         /// Simply returns the current state of the lottery.
         #[ink(message)]
-        pub fn lottery_state(&self) -> bool {
+        pub fn lottery_is_open(&self) -> bool {
             self.open
         }
 
