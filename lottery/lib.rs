@@ -5,7 +5,9 @@ mod lottery {
 
 
     // Import the `Mapping` type
-use ink::{storage::Mapping};
+use ink::{storage::Mapping, };
+
+
 
 
     /// Defines the storage of your contract.
@@ -79,6 +81,12 @@ use ink::{storage::Mapping};
         pub fn get_tickets_by_account(&self, account: AccountId) -> Option<u32> {
             self.tickets.get(account)
         }
+
+        /// Draw the winner of the lottery
+        #[ink(message)]
+        pub fn draw_winner(&self, account: AccountId) -> Option<u32> {
+            self.tickets.get(account)
+        }
         
         
 
@@ -93,18 +101,22 @@ use ink::{storage::Mapping};
             let tickets = self.tickets.get(caller).unwrap_or(0);
             let endowment = self.env().transferred_value() as u32;
             assert!(endowment > desired_amount);
-            self.tickets.insert(caller, &(tickets + desired_amount));          
+            self.tickets.insert(caller, &(tickets + desired_amount));  
+            self.jackpot += desired_amount;        
         }
 
         /// Fetch price of one ticket
-        #[ink(message)]
-        pub fn get_ticket_price(&self) -> String {
-            "A ticket costs exactly 1 Token.".to_owned()           
-        }
-
+        
+         #[ink(message)]
+        pub fn get_ticket_price(&self) -> ink::prelude::string::String {
+            use ink::prelude::string::*;
+            "Ticket costs exactly 1 token".to_string()
+            
+        } 
         /// Simply returns the current state of the lottery.
         #[ink(message)]
         pub fn lottery_is_open(&self) -> bool {
+            
             self.open
         }
 
