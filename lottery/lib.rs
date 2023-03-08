@@ -141,6 +141,7 @@ use super::RandomReadErr;
         /// Draw the winner of the lottery
         #[ink(message)]
         pub fn draw_winner(&mut self, account: AccountId) -> Result<AccountId, RandomReadErr> {
+            assert!(self.env().block_number()> self.drawing_block);
             let bytes: [u8; 4] = self.jackpot.to_be_bytes();
             let subject: [u8; 32] = core::array::from_fn(|i| bytes[i%4]);
             let rand: [u8; 32] = self.env().extension().fetch_random(subject)?;
