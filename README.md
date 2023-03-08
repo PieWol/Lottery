@@ -4,3 +4,4 @@ A smart contract based on the ink! lang by parity to implement a simple lottery 
 The randomness used to select the winner is brought into the scope of the contract via the chain extension that provides a source for randomness.
 
 The whole logic is made by me but lots of the code is either taken or heavily inspired by the ink! documentation or their implementation examples.
+
