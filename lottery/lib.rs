@@ -36,8 +36,7 @@ impl ink::env::chain_extension::FromStatusCode for RandomReadErr {
 pub enum CustomEnvironment {}
 
 impl Environment for CustomEnvironment {
-    const MAX_EVENT_TOPICS: usize =
-        <ink::env::DefaultEnvironment as Environment>::MAX_EVENT_TOPICS;
+    const MAX_EVENT_TOPICS: usize = <ink::env::DefaultEnvironment as Environment>::MAX_EVENT_TOPICS;
 
     type AccountId = ink::primitives::AccountId;
     type Balance = <ink::env::DefaultEnvironment as Environment>::Balance;
@@ -51,13 +50,9 @@ impl Environment for CustomEnvironment {
 #[ink::contract(env = crate::CustomEnvironment)]
 mod lottery {
 
-
-
-
     // Import the `Mapping` type
-use ink::{storage::{Mapping}};
-use super::RandomReadErr;
-
+    use super::RandomReadErr;
+    use ink::storage::Mapping;
 
     /// Defines the storage of your contract.
     /// Add new fields to the below struct in order
@@ -65,7 +60,7 @@ use super::RandomReadErr;
     #[ink(storage)]
     pub struct Lottery {
         /// Stores a single `bool` value on the storage.
-        /// used to determine state of the lottery. 
+        /// used to determine state of the lottery.
         /// true meaning tickets can be bought.
         /// false meaning a closed lottery waiting for the drawing of the winner.
         open: bool,
@@ -80,11 +75,8 @@ use super::RandomReadErr;
         // Block that marks end of tickets being purchaseable.
         ending_block: u32,
         // Block that the drawing of the winner will occur in. ~1hr after end of lottery.
-        drawing_block: u32       
-        
+        drawing_block: u32,
     }
-
-
 
     impl Lottery {
         /// Constructor that initializes the lottery.
@@ -95,29 +87,26 @@ use super::RandomReadErr;
             lottery
         }
 
-
         fn new() -> Self {
             let tickets = Mapping::default();
-            Self { 
-                open: true, 
+            Self {
+                open: true,
                 winner: None,
                 entrants: ink::prelude::vec![],
                 tickets,
                 jackpot: 0,
                 ending_block: 0,
-                drawing_block: 0
-                 }
+                drawing_block: 0,
+            }
         }
 
         // set the ending and drawing block of the lottery based on the current block number
         fn start_lottery(&mut self) {
-           let block = self.env().block_number();
+            let block = self.env().block_number();
 
-           self.ending_block = block + 100800;
-           self.drawing_block = block + 100900;
-            }
-
-
+            self.ending_block = block + 100800;
+            self.drawing_block = block + 100900;
+        }
 
         /// Retrieve the ticket amount of the caller.
         #[ink(message)]
@@ -137,7 +126,6 @@ use super::RandomReadErr;
             self.tickets.get(account)
         }
 
-
         /// Draw the winner of the lottery
         #[ink(message)]
         pub fn draw_winner(&mut self, account: AccountId) -> Result<AccountId, RandomReadErr> {
@@ -146,11 +134,12 @@ use super::RandomReadErr;
             assert!(self.winner.is_none());
 
             let bytes: [u8; 4] = self.jackpot.to_be_bytes();
-            let subject: [u8; 32] = core::array::from_fn(|i| bytes[i%4]);
+            let subject: [u8; 32] = core::array::from_fn(|i| bytes[i % 4]);
             let rand: [u8; 32] = self.env().extension().fetch_random(subject)?;
 
             // add the 1 to the current jackpot size so even the last entry has a chance of winning.
-            let mut winning_number = (rand[0]*rand[1]*rand[2]*rand[3]) as u32 % self.jackpot_size()+1 ;
+            let mut winning_number =
+                (rand[0] * rand[1] * rand[2] * rand[3]) as u32 % self.jackpot_size() + 1;
             let map = &self.tickets;
             // If the function fails the caller will become the winner. (think of something better)
             let mut winner = self.winner.unwrap_or(account);
@@ -161,43 +150,37 @@ use super::RandomReadErr;
                     winner = entrant.to_owned();
                     break;
                 }
-                
+
                 winning_number -= map.get(entrant).unwrap();
-            
             }
             self.winner = Some(winner);
             Ok(winner)
         }
-        
-        
 
         /// Buy Lottery tickets
         #[ink(message, payable)]
         pub fn purchase_tickets(&mut self, desired_amount: u32) {
             // check for lottery being open
             assert!(self.env().block_number() < self.ending_block);
-            
-                      
+
             let caller = self.env().caller();
             let tickets = self.tickets.get(caller).unwrap_or(0);
             let endowment = self.env().transferred_value() as u32;
             assert!(endowment > desired_amount);
-            self.tickets.insert(caller, &(tickets + desired_amount));  
-            self.jackpot += desired_amount; 
-            self.add_entrant(caller);       
+            self.tickets.insert(caller, &(tickets + desired_amount));
+            self.jackpot += desired_amount;
+            self.add_entrant(caller);
         }
 
         /// Fetch price of one ticket
-         #[ink(message)]
+        #[ink(message)]
         pub fn get_ticket_price(&self) -> ink::prelude::string::String {
             use ink::prelude::string::*;
             "Ticket costs exactly 1 token".to_string()
-            
-        } 
+        }
         /// Simply returns the current state of the lottery.
         #[ink(message)]
         pub fn lottery_is_open(&self) -> bool {
-            
             self.open
         }
 
@@ -207,7 +190,7 @@ use super::RandomReadErr;
             self.jackpot
         }
     }
-    /* 
+    /*
     /// Unit tests in Rust are normally defined within such a `#[cfg(test)]`
     /// module and test functions are marked with a `#[test]` attribute.
     /// The below code is technically just normal Rust code.
