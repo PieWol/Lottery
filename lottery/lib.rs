@@ -145,7 +145,7 @@ mod lottery {
             let mut winner = self.winner.unwrap_or(account);
 
             for entrant in &self.entrants {
-                if winning_number < map.get(entrant).unwrap() {
+                if winning_number <= map.get(entrant).unwrap() {
                     use ink::prelude::borrow::ToOwned;
                     winner = entrant.to_owned();
                     break;
