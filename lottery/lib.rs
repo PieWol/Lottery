@@ -59,11 +59,6 @@ mod lottery {
     /// to add new static storage fields to your contract.
     #[ink(storage)]
     pub struct Lottery {
-        /// Stores a single `bool` value on the storage.
-        /// used to determine state of the lottery.
-        /// true meaning tickets can be bought.
-        /// false meaning a closed lottery waiting for the drawing of the winner.
-        open: bool,
         // Store the winner
         winner: Option<AccountId>,
         // Store all entrants. used to traverse the mapping lateron.
@@ -90,7 +85,6 @@ mod lottery {
         fn new() -> Self {
             let tickets = Mapping::default();
             Self {
-                open: true,
                 winner: None,
                 entrants: ink::prelude::vec![],
                 tickets,
@@ -98,6 +92,14 @@ mod lottery {
                 ending_block: 0,
                 drawing_block: 0,
             }
+        }
+
+        // separately pay out the jackpot as soon as a winner has been drawn.
+        // this transfers out all the funds the contract holds and terminates its existence.
+        #[ink(message)]
+        pub fn payout(&self) {
+            assert!(self.winner.is_some());
+            self.env().terminate_contract(self.winner.unwrap());
         }
 
         // set the ending and drawing block of the lottery based on the current block number
@@ -128,7 +130,7 @@ mod lottery {
 
         /// Draw the winner of the lottery
         #[ink(message)]
-        pub fn draw_winner(&mut self, account: AccountId) -> Result<AccountId, RandomReadErr> {
+        pub fn draw_winner(&mut self) -> Result<(), RandomReadErr> {
             // make sure drawing block has been reached and no winner is yet determined.
             assert!(self.env().block_number() >= self.drawing_block);
             assert!(self.winner.is_none());
@@ -141,20 +143,19 @@ mod lottery {
             let mut winning_number =
                 (rand[0] * rand[1] * rand[2] * rand[3]) as u32 % self.jackpot_size() + 1;
             let map = &self.tickets;
-            // If the function fails the caller will become the winner. (think of something better)
-            let mut winner = self.winner.unwrap_or(account);
+            let mut winner = None;
 
             for entrant in &self.entrants {
                 if winning_number <= map.get(entrant).unwrap() {
                     use ink::prelude::borrow::ToOwned;
-                    winner = entrant.to_owned();
+                    winner = Some(entrant.to_owned());
                     break;
                 }
 
                 winning_number -= map.get(entrant).unwrap();
             }
-            self.winner = Some(winner);
-            Ok(winner)
+            self.winner = winner;
+            Ok(())
         }
 
         /// Buy Lottery tickets
@@ -172,16 +173,22 @@ mod lottery {
             self.add_entrant(caller);
         }
 
+        /// Return the winner as an Optional
+        #[ink(message)]
+        pub fn get_winner(&self) -> Option<AccountId> {
+            self.winner
+        }
+
         /// Fetch price of one ticket
         #[ink(message)]
         pub fn get_ticket_price(&self) -> ink::prelude::string::String {
             use ink::prelude::string::*;
             "Ticket costs exactly 1 token".to_string()
         }
-        /// Simply returns the current state of the lottery.
+        /// Simply returns the current state of the lottery. true means lottery is open and tickets can be bought.
         #[ink(message)]
         pub fn lottery_is_open(&self) -> bool {
-            self.open
+             self.env().block_number() < self.ending_block
         }
 
         /// Simply returns the current jackpot size of the lottery. This should also represent the amount of tickets that have been purchased so far.
