@@ -197,7 +197,7 @@ mod lottery {
             self.jackpot
         }
     }
-    /*
+    
     /// Unit tests in Rust are normally defined within such a `#[cfg(test)]`
     /// module and test functions are marked with a `#[test]` attribute.
     /// The below code is technically just normal Rust code.
@@ -209,17 +209,17 @@ mod lottery {
         /// We test if the default constructor does its job.
         #[ink::test]
         fn default_works() {
-            let lottery = Lottery::new(true);
-            assert_eq!(lottery.get(), false);
+            let lottery = Lottery::new();
+            assert_eq!(lottery.winner, None);
         }
 
         /// We test a simple use case of our contract.
         #[ink::test]
         fn it_works() {
-            let mut lottery = Lottery::new(false);
-            assert_eq!(lottery.get(), false);
-            lottery.flip();
-            assert_eq!(lottery.get(), true);
+            let lottery = Lottery::new();
+            assert_eq!(lottery.entrants.len() , 0);
+           // lottery.flip();
+           // assert_eq!(lottery.get(), true);
         }
-    }*/
+    }
 }
